@@ -51,6 +51,12 @@ type Segment =
   | { kind: "dwell"; stop: Stop; startMs: number; durationMs: number }
   | { kind: "fly"; from: Stop; to: Stop; startMs: number; durationMs: number };
 
+function isFlySegment(
+  s: Segment,
+): s is Extract<Segment, { kind: "fly" }> {
+  return s.kind === "fly";
+}
+
 export interface Trip {
   settings: TripSettings;
   segments: Segment[];
@@ -151,4 +157,43 @@ export function evaluateCamera(trip: Trip, tMs: number): CameraState {
   const zoom = restZoom - arcOut * peakZoomOut;
 
   return { center, zoom, bearing: 0, pitch };
+}
+
+export interface Leg {
+  from: Stop;
+  to: Stop;
+}
+
+// The ordered from/to pairs a trip flies between — for consumers (route
+// drawing) that need the legs themselves, not the dwell/fly timing.
+export function getLegs(trip: Trip): Leg[] {
+  return trip.segments.filter(isFlySegment).map((s) => ({
+    from: s.from,
+    to: s.to,
+  }));
+}
+
+export interface LegProgress extends Leg {
+  // 0 before the leg starts, the same eased fraction evaluateCamera uses
+  // while it's in flight, 1 once it's done. Lets a renderer draw completed
+  // legs in full, the active leg up to its current progress, and skip
+  // legs that haven't started yet.
+  t: number;
+}
+
+export function getLegProgress(trip: Trip, tMs: number): LegProgress[] {
+  const clamped = Math.min(Math.max(tMs, 0), trip.totalMs);
+  const ease = EASE_FNS[trip.settings.ease];
+
+  return trip.segments.filter(isFlySegment).map((s) => {
+    let t: number;
+    if (clamped >= s.startMs + s.durationMs) {
+      t = 1;
+    } else if (clamped <= s.startMs || s.durationMs === 0) {
+      t = 0;
+    } else {
+      t = ease((clamped - s.startMs) / s.durationMs);
+    }
+    return { from: s.from, to: s.to, t };
+  });
 }

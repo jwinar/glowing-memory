@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildTrip, evaluateCamera, type Trip } from "@/lib/trip";
+import {
+  buildTrip,
+  evaluateCamera,
+  getLegProgress,
+  getLegs,
+  type Trip,
+} from "@/lib/trip";
 import type { Stop } from "@/lib/types";
 
 const tokyo: Stop = { id: "a", name: "Tokyo", lng: 139.69, lat: 35.68 };
@@ -94,5 +100,46 @@ describe("evaluateCamera", () => {
     const trip = buildTrip([tokyo, paris]);
     const roundTripped: Trip = JSON.parse(JSON.stringify(trip));
     expect(roundTripped).toEqual(trip);
+  });
+});
+
+describe("getLegs", () => {
+  it("is empty for a trip with no legs", () => {
+    expect(getLegs(buildTrip([]))).toEqual([]);
+    expect(getLegs(buildTrip([tokyo]))).toEqual([]);
+  });
+
+  it("lists legs in order, ignoring dwell segments", () => {
+    const trip = buildTrip([tokyo, paris, losAngeles]);
+    expect(getLegs(trip)).toEqual([
+      { from: tokyo, to: paris },
+      { from: paris, to: losAngeles },
+    ]);
+  });
+});
+
+describe("getLegProgress", () => {
+  it("marks every leg as not-started at t=0", () => {
+    const trip = buildTrip([tokyo, paris, losAngeles]);
+    expect(getLegProgress(trip, 0).every((l) => l.t === 0)).toBe(true);
+  });
+
+  it("marks every leg complete once the trip is over", () => {
+    const trip = buildTrip([tokyo, paris, losAngeles]);
+    expect(
+      getLegProgress(trip, trip.totalMs).every((l) => l.t === 1),
+    ).toBe(true);
+  });
+
+  it("reports partial progress only for the currently-active leg", () => {
+    const trip = buildTrip([tokyo, paris, losAngeles]);
+    const secondLegStart =
+      trip.settings.dwellMs * 2 + trip.settings.legMs; // through first dwell, first leg, second dwell
+    const midSecondLeg = secondLegStart + trip.settings.legMs / 2;
+
+    const progress = getLegProgress(trip, midSecondLeg);
+    expect(progress[0].t).toBe(1); // Tokyo -> Paris already flown
+    expect(progress[1].t).toBeGreaterThan(0); // Paris -> LA in progress
+    expect(progress[1].t).toBeLessThan(1);
   });
 });

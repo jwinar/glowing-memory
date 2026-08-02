@@ -30,6 +30,8 @@ export default function Home() {
     <div className="relative h-dvh w-dvw">
       <GlobeMap
         stops={stops}
+        trip={trip}
+        tMs={player.tMs}
         onAddStop={(lng, lat) => addStop(lng, lat)}
         onMoveStop={moveStop}
         onMapReady={setMap}
