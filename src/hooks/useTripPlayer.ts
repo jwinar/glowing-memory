@@ -1,14 +1,14 @@
 "use client";
 
-import { setNow, restoreNow, type MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { evaluateCamera, type Trip } from "@/lib/trip";
+import type { Trip } from "@/lib/trip";
 
-// Drives the map from a Trip timeline. This is deliberately the same
-// evaluateCamera(trip, tMs) call the export pipeline (milestone 6) will
-// use — preview just advances tMs from requestAnimationFrame's wall clock
-// instead of stepping it frame-by-frame, so the two can never drift apart.
-export function useTripPlayer(map: MapLibreMap | null, trip: Trip) {
+// Tracks playback position for a Trip timeline: play/pause advance tMs via
+// requestAnimationFrame's wall clock, seeking jumps it directly. Doesn't
+// touch the map itself — GlobeMap applies whatever tMs comes out of this
+// hook via the same applyTripFrame() the export renderer uses, so preview
+// and export can never drift apart.
+export function useTripPlayer(trip: Trip) {
   const [tMs, setTMs] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const rafRef = useRef<number | null>(null);
@@ -21,16 +21,6 @@ export function useTripPlayer(map: MapLibreMap | null, trip: Trip) {
   useEffect(() => {
     tripRef.current = trip;
   }, [trip]);
-
-  // Apply whatever tMs currently is to the map, whether that came from
-  // playback, a seek, or the trip itself changing (e.g. a pin was added).
-  useEffect(() => {
-    if (!map) return;
-    setNow(tMs);
-    map.jumpTo(evaluateCamera(trip, tMs));
-  }, [map, tMs, trip]);
-
-  useEffect(() => restoreNow, []);
 
   useEffect(() => {
     if (!isPlaying) {

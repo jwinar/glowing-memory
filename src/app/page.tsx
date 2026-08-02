@@ -2,6 +2,7 @@
 
 import type { MapLibreMap } from "maplibre-gl";
 import { useCallback, useMemo, useState } from "react";
+import ExportPanel from "@/components/ExportPanel";
 import GlobeMap from "@/components/GlobeMap";
 import PlaceSearch from "@/components/PlaceSearch";
 import StopsList from "@/components/StopsList";
@@ -16,7 +17,7 @@ export default function Home() {
   const [map, setMap] = useState<MapLibreMap | null>(null);
 
   const trip = useMemo(() => buildTrip(stops), [stops]);
-  const player = useTripPlayer(map, trip);
+  const player = useTripPlayer(trip);
 
   const handlePlaceSelect = useCallback(
     (result: GeocodeResult) => {
@@ -44,6 +45,10 @@ export default function Home() {
         <div className="pointer-events-auto">
           <PlaceSearch onSelect={handlePlaceSelect} />
         </div>
+      </div>
+
+      <div className="pointer-events-none absolute right-4 top-4">
+        <ExportPanel trip={trip} stops={stops} />
       </div>
 
       <div className="pointer-events-auto absolute bottom-4 left-4 max-h-[50dvh] w-72 overflow-auto rounded-lg bg-white/90 p-3 shadow dark:bg-black/70">
