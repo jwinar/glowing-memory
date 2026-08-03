@@ -1,0 +1,70 @@
+# XcodeGen spec. Generates Daylight.xcodeproj from the sources in this repo:
+#
+#   brew install xcodegen && xcodegen generate
+#
+# Hand-assembling the project in Xcode works too — SETUP.md lists the steps and
+# the settings that matter. The spec is here so the target layout is reviewable
+# as text rather than buried in a pbxproj.
+
+name: Daylight
+options:
+  bundleIdPrefix: com.example.daylight
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+packages:
+  SolarKit:
+    path: SolarKit
+  SkyPalette:
+    path: SkyPalette
+
+targets:
+  Daylight:
+    type: application
+    platform: iOS
+    sources:
+      - path: Daylight/DaylightApp
+      - path: Daylight/Shared
+    dependencies:
+      - package: SolarKit
+        product: SolarKit
+      - package: SkyPalette
+        product: SkyPalette
+      - target: DaylightWidget
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.daylight
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: >-
+          Daylight uses your location to work out where the sun is. It never
+          leaves your device.
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        CODE_SIGN_ENTITLEMENTS: Daylight/DaylightApp/Daylight.entitlements
+        SWIFT_VERSION: "5.9"
+
+  DaylightWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Daylight/DaylightWidget
+      - path: Daylight/Shared
+    dependencies:
+      - package: SolarKit
+        product: SolarKit
+      - package: SkyPalette
+        product: SkyPalette
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.daylight.widget
+        CODE_SIGN_ENTITLEMENTS: Daylight/DaylightWidget/DaylightWidget.entitlements
+        SWIFT_VERSION: "5.9"
+        INFOPLIST_KEY_CFBundleDisplayName: Daylight
+      # NSExtension keys are supplied via the generated Info.plist below.
+    info:
+      path: Daylight/DaylightWidget/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
